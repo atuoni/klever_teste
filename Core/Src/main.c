@@ -49,6 +49,7 @@ UART_HandleTypeDef huart2;
 
 QueueHandle_t xUARTQueue;
 QueueHandle_t xADCQueue;
+QueueHandle_t xLEDQueue;
 
 uint8_t Rx_indx, Rx_data[2], Rx_Buffer[100], Transfer_cplt;
 char msg[30];
@@ -87,7 +88,7 @@ int main(void)
   /* USER CODE END 1 */
   xUARTQueue = xQueueCreate(1,1);
   xADCQueue = xQueueCreate(1,2);
-
+  xLEDQueue = xQueueCreate(1,1);
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -130,9 +131,9 @@ int main(void)
 
   /* Create the thread(s) */
   /* definition and creation of defaultTask */
-  xTaskCreate((TaskFunction_t)Task1,"LED Controller", configMINIMAL_STACK_SIZE,NULL,10,NULL);
-  xTaskCreate((TaskFunction_t)Task2,"UART Controller", configMINIMAL_STACK_SIZE,NULL,10,NULL);
-  xTaskCreate((TaskFunction_t)Task3,"ADC Controller", configMINIMAL_STACK_SIZE,NULL,10,NULL);
+  xTaskCreate((TaskFunction_t)Task1,"LED Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);
+  xTaskCreate((TaskFunction_t)Task2,"UART Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);
+  xTaskCreate((TaskFunction_t)Task3,"ADC Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -312,7 +313,7 @@ static void MX_GPIO_Init(void)
 /* USER CODE END Header_StartDefaultTask */
 void Task1(void const * argument)
 {
-  uint8_t modo;
+  uint8_t modo,retorno;
   /* USER CODE BEGIN 5 */
   /* Infinite loop */
 
@@ -320,23 +321,29 @@ void Task1(void const * argument)
   while(1)
   {
        if(xQueueReceive(xUARTQueue,&modo,0)==pdPASS)
-              {
+       {
         	if(modo == 1)
                 {
               	      HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9, GPIO_PIN_SET);
+              	      retorno=1;
+              	      xQueueSend(xLEDQueue,&retorno,0);
 
                 }
-                    if(modo == 2)
-                        {
-                        	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9, GPIO_PIN_RESET);
+                if(modo == 2)
+                {
+                        HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9, GPIO_PIN_RESET);
+                        retorno=2;
+                        xQueueSend(xLEDQueue,&retorno,0);
 
-                        }
-                    if(modo == 3)
-                        {
-                        	HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_9);
+                 }
+                 if(modo == 3)
+                 {
+                        HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_9);
+                        retorno=3;
+                        xQueueSend(xLEDQueue,&retorno,0);
 
-                        }
-               }
+                 }
+       }
 
   }
 }
@@ -345,18 +352,53 @@ void Task2(void const *argument)
 {
 //uint16_t adc;
 //char msg[15];
+uint8_t answer=0;
   while(1)
     {
 
       HAL_UART_Receive_IT(&huart2,(uint8_t*)Rx_data,1);
 
+      if(xQueueReceive(xLEDQueue,&answer,0)==pdPASS)
+      {
+      	switch(answer)
+      	{
+      	  case 1:
+      	      HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      	      HAL_UART_Transmit(&huart2,(uint8_t *)"LED ACESO",9,100);
+      	      HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      	      break;
+
+
+      	  case 2:
+
+      		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      		    HAL_UART_Transmit(&huart2,(uint8_t *)"LED APAGADO",11,100);
+      		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      		    break;
+
+      	  case 3:
+
+      		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      		    HAL_UART_Transmit(&huart2,(uint8_t *)"LED TogglE",10,100);
+      		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      		    break;
+
+      	  default:
+      		       HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      		       HAL_UART_Transmit(&huart2,(uint8_t *)"FALHA",5,100);
+      		       sprintf(msg,"rawValue: %hu\r\n",answer);
+      		       HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),100);
+      		       HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+         }
+
+	}
+      }
       //if(opt==1)
 	//{
 	//  xQueueSend(xUARTQueue,&opt,pdMS_TO_TICKS(10));
 	//}
       //else
 	//xQueueSend(xUARTQueue,&opt,pdMS_TO_TICKS(10));
-    }
 }
 void Task3(void const *argument)
 {
@@ -377,16 +419,11 @@ uint8_t i, opt=0;
 uint16_t adc =0;
 //char msg[15];
 
-BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-BaseType_t xTaskWokenByReceive = pdFALSE;
+//BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+//BaseType_t xTaskWokenByReceive = pdFALSE;
 
+xQueueReceiveFromISR(xADCQueue,(uint16_t *)&adc,NULL);
 
-xQueueReceiveFromISR(xADCQueue,(uint16_t *)&adc,&xTaskWokenByReceive);
-
-if( xTaskWokenByReceive != pdFALSE )
-{
-    taskYIELD ();
-}
 
 if(huart->Instance==USART2)
   {
@@ -417,42 +454,23 @@ if(huart->Instance==USART2)
 
 	if(!strcmp((char *)Rx_Buffer,"LED ON"))
 	{
-	    //HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9, GPIO_PIN_SET);
 	  opt = 1;
-	  xQueueSendFromISR(xUARTQueue,&opt,&xHigherPriorityTaskWoken);
-	  HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	  HAL_UART_Transmit(&huart2,(uint8_t *)"LED ACESO",9,100);
-	  HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	  if(xHigherPriorityTaskWoken != pdFALSE)
-	  {
-	      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-	  }
+
+	  xQueueSendFromISR(xUARTQueue,&opt,NULL);
 
 	}
 	if(!strcmp((char *)Rx_Buffer,"LED OFF"))
 	{
 
-	    opt = 2;
-	    xQueueSendFromISR(xUARTQueue,&opt,&xHigherPriorityTaskWoken);
-	    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	    HAL_UART_Transmit(&huart2,(uint8_t *)"LED APAGADO",11,100);
-	    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	    	  if(xHigherPriorityTaskWoken != pdFALSE)
-	    	    {
-	    	      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-	    	    }
+	   opt = 2;
+	   xQueueSendFromISR(xUARTQueue,&opt,NULL);
+
 	}
 	if(!strcmp((char *)Rx_Buffer,"LED T"))
 	{
 	    opt = 3;
-	    xQueueSendFromISR(xUARTQueue,&opt,&xHigherPriorityTaskWoken);
-	    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	    HAL_UART_Transmit(&huart2,(uint8_t *)"LED Toggle",10,100);
-	    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	    	  if(xHigherPriorityTaskWoken != pdFALSE)
-	    	    {
-	    	      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-	    	    }
+	    xQueueSendFromISR(xUARTQueue,&opt,NULL);
+
 	}
 	if(!strcmp((char *)Rx_Buffer,"Loop Back"))
 	{
@@ -472,13 +490,7 @@ if(huart->Instance==USART2)
 
 
 	}
-	//else
-	//{
-	    //opt=0;
-	    //HAL_UART_Transmit(&huart2,(uint8_t *)"Comando nao identificado!",25,100);
-	    //HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	    //osMessagePut(MsgBox, opt, osWaitForever);
-	//}
+
       }
     //HAL_UART_Receive_IT(&huart2,(uint8_t *)Rx_data,1);
     //HAL_UART_Transmit(&huart2,Rx_data,strlen((const char *)Rx_data),100);
