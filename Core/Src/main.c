@@ -51,6 +51,7 @@ QueueHandle_t xUARTQueue;
 
 
 uint8_t Rx_indx, Rx_data[2], Rx_Buffer[100], Transfer_cplt;
+uint16_t adcvalue=0;
 
 /* USER CODE BEGIN PV */
 
@@ -63,6 +64,7 @@ static void MX_ADC1_Init(void);
 static void MX_USART2_UART_Init(void);
 void Task1(void const * argument);
 void Task2(void const *argument);
+void Task3(void const *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -128,7 +130,7 @@ int main(void)
   /* definition and creation of defaultTask */
   xTaskCreate((TaskFunction_t)Task1,"LED Controller", configMINIMAL_STACK_SIZE,NULL,10,NULL);
   xTaskCreate((TaskFunction_t)Task2,"UART Controller", configMINIMAL_STACK_SIZE,NULL,10,NULL);
-
+  xTaskCreate((TaskFunction_t)Task3,"ADC Controller", configMINIMAL_STACK_SIZE,NULL,10,NULL);
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -210,7 +212,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
@@ -353,11 +355,22 @@ void Task2(void const *argument)
 	//xQueueSend(xUARTQueue,&opt,pdMS_TO_TICKS(10));
     }
 }
+void Task3(void const *argument)
+{
+
+  while(1)
+    {
+      HAL_ADC_Start(&hadc1);
+      adcvalue = HAL_ADC_GetValue(&hadc1);
+      //xQueueSend(xADCQueue,&adcvalue,&xHigherPriorityTaskWoken);
+    }
+}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 /* Set transmission flag: transfer complete*/
 uint8_t i, opt;
+char msg[15];
 
 BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
@@ -434,6 +447,16 @@ if(huart->Instance==USART2)
 	    HAL_UART_Transmit(&huart2,Rx_Buffer,strlen((char *)Rx_Buffer),100);
 	    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
 	}
+	if(!strcmp((char *)Rx_Buffer,"ADC"))
+		{
+		    opt = 5;
+		    //xQueueSendFromISR(xUARTQueue,&opt,&xHigherPriorityTaskWoken);
+		    sprintf(msg,"rawValue: %hu\r\n", adcvalue);
+		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+		    HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),100);
+		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+
+		}
 	//else
 	//{
 	    //opt=0;
