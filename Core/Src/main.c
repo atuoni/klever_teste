@@ -48,10 +48,11 @@ ADC_HandleTypeDef hadc1;
 UART_HandleTypeDef huart2;
 
 QueueHandle_t xUARTQueue;
-
+QueueHandle_t xADCQueue;
 
 uint8_t Rx_indx, Rx_data[2], Rx_Buffer[100], Transfer_cplt;
-uint16_t adcvalue=0;
+char msg[30];
+//uint16_t adcvalue=0;
 
 /* USER CODE BEGIN PV */
 
@@ -85,6 +86,7 @@ int main(void)
 
   /* USER CODE END 1 */
   xUARTQueue = xQueueCreate(1,1);
+  xADCQueue = xQueueCreate(1,2);
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -341,7 +343,8 @@ void Task1(void const * argument)
 
 void Task2(void const *argument)
 {
-
+//uint16_t adc;
+//char msg[15];
   while(1)
     {
 
@@ -357,22 +360,33 @@ void Task2(void const *argument)
 }
 void Task3(void const *argument)
 {
-
+uint16_t adcvalue=0;
   while(1)
     {
       HAL_ADC_Start(&hadc1);
       adcvalue = HAL_ADC_GetValue(&hadc1);
-      //xQueueSend(xADCQueue,&adcvalue,&xHigherPriorityTaskWoken);
+
+      xQueueSend(xADCQueue,&adcvalue,0);
     }
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 /* Set transmission flag: transfer complete*/
-uint8_t i, opt;
-char msg[15];
+uint8_t i, opt=0;
+uint16_t adc =0;
+//char msg[15];
 
 BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+BaseType_t xTaskWokenByReceive = pdFALSE;
+
+
+xQueueReceiveFromISR(xADCQueue,(uint16_t *)&adc,&xTaskWokenByReceive);
+
+if( xTaskWokenByReceive != pdFALSE )
+{
+    taskYIELD ();
+}
 
 if(huart->Instance==USART2)
   {
@@ -448,15 +462,16 @@ if(huart->Instance==USART2)
 	    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
 	}
 	if(!strcmp((char *)Rx_Buffer,"ADC"))
-		{
-		    opt = 5;
-		    //xQueueSendFromISR(xUARTQueue,&opt,&xHigherPriorityTaskWoken);
-		    sprintf(msg,"rawValue: %hu\r\n", adcvalue);
-		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-		    HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),100);
-		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+	{
 
-		}
+
+			sprintf(msg,"rawValue: %hu\r\n",adc);
+			HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+			HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),100);
+			HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+
+
+	}
 	//else
 	//{
 	    //opt=0;
