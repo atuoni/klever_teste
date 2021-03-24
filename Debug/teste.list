@@ -1212,9 +1212,9 @@ uint8_t ack_received=0;    //store an acknowledge received
  8000a42:	4916      	ldr	r1, [pc, #88]	; (8000a9c <TaskUART+0xe4>)
  8000a44:	4813      	ldr	r0, [pc, #76]	; (8000a94 <TaskUART+0xdc>)
  8000a46:	f001 fe1d 	bl	8002684 <HAL_UART_Transmit>
-      		HAL_UART_Transmit(&huart2,(uint8_t *)"LED TOGGLE",17,100); //tx message
+      		HAL_UART_Transmit(&huart2,(uint8_t *)"LED TOGGLE",10,100); //tx message
  8000a4a:	2364      	movs	r3, #100	; 0x64
- 8000a4c:	2211      	movs	r2, #17
+ 8000a4c:	220a      	movs	r2, #10
  8000a4e:	4916      	ldr	r1, [pc, #88]	; (8000aa8 <TaskUART+0xf0>)
  8000a50:	4810      	ldr	r0, [pc, #64]	; (8000a94 <TaskUART+0xdc>)
  8000a52:	f001 fe17 	bl	8002684 <HAL_UART_Transmit>

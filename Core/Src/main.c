@@ -308,7 +308,7 @@ uint8_t ack_received=0;    //store an acknowledge received
       	  case 3:
 
       		HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-      		HAL_UART_Transmit(&huart2,(uint8_t *)"LED TOGGLE",17,100); //tx message
+      		HAL_UART_Transmit(&huart2,(uint8_t *)"LED TOGGLE",10,100); //tx message
       		HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
       		break;
 
