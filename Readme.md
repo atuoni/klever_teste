@@ -1,8 +1,9 @@
 
 
 # Programa para o desafio técnico da teste da Klever 
+###  Vaga Desenvolvedor de Firmware Júnior
 
-### Desenvolvido por Amauri Tuoni  - qua 24 mar 2021 20:00:16 
+#### Desenvolvido por Amauri Tuoni  - qua 24 mar 2021 20:00:16 
 
 
 -Foi utilizado o MCU STM32 modelo STM32F407ZGT6 para os testes. 
@@ -19,11 +20,11 @@
 
 Os comandos utilizados para operar o sistema são:
 
-### Ligar LED  => led on
-### Desligar LED => led off
-### Inverter (toggle) LED  => led tgl 
-### Loop back (enviar de volta o mesmo pacote recebido) => lb on
-### Loop back (desligar - não enviar de volta pacote recebido) => lb off 
-### Ler conversor AD (valor mais recente, em 12 bits)  =>  adc
+#### Ligar LED  => led on
+#### Desligar LED => led off
+#### Inverter (toggle) LED  => led tgl 
+#### Loop back (enviar de volta o mesmo pacote recebido) => lb on
+#### Loop back (desligar - não enviar de volta pacote recebido) => lb off 
+#### Ler conversor AD (valor mais recente, em 12 bits)  =>  adc
 
 
