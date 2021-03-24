@@ -1,8 +1,11 @@
 
-//************************************************************************************
+//********************************************
+//
 //Programa para o desafio técnico da teste da Klever - 
+//
 //Desenvolvido por Amauri Tuoni
-//************************************************************************************
+//
+//************************************************
 
 Foi utilizado o MCU STM32 modelo STM32F407ZGT6 para os testes. 
 Foi utilizado o STM32CubeMX para auxiliar na configuração e inicialização dos periféricos da CPU.
