@@ -3,17 +3,11 @@
   ******************************************************************************
   * @file           : main.c
   * @brief          : Main program body
+  *
+  * Programa de Avaliação do Desafio Técnico - Empresa Klever (Amauri Tuoni)
   ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under Ultimate Liberty license
-  * SLA0044, the "License"; You may not use this file except in compliance with
-  * the License. You may obtain a copy of the License at:
-  *                             www.st.com/SLA0044
-  *
+  * This main.c file was written by Amauri Tuoni
+  * Date: 24/03/2021
   ******************************************************************************
   */
 /* USER CODE END Header */
@@ -23,24 +17,8 @@
 #include <stdio.h>
 #include <string.h>
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
+#define TRUE 1
+#define FALSE 0
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
@@ -51,31 +29,21 @@ QueueHandle_t xUARTQueue;
 QueueHandle_t xADCQueue;
 QueueHandle_t xLEDQueue;
 
-uint8_t Rx_indx, Rx_data[2], Rx_Buffer[100], Transfer_cplt;
-char msg[30];
-//uint16_t adcvalue=0;
+uint8_t Rx_index=0, Rx_data[2], Rx_Buffer[100], Transfer_complete;  //uart data receiver  buffers
+char string_msg[30];      //string message to print on the screen
+uint8_t lp_mode = FALSE;  //initial state loop back mode (off)
 
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-void SystemClock_Config(void);
-static void MX_GPIO_Init(void);
-static void MX_ADC1_Init(void);
-static void MX_USART2_UART_Init(void);
-void Task1(void const * argument);
-void Task2(void const *argument);
-void Task3(void const *argument);
+void SystemClock_Config(void);     //clock config
+static void MX_GPIO_Init(void);   // i/o config
+static void MX_ADC1_Init(void);     //adc config
+static void MX_USART2_UART_Init(void);   //uart config
+void TaskLED(void const * argument);        //led task
+void TaskUART(void const *argument);         //uart task
+void TaskADC(void const *argument);         //adc task
 
-/* USER CODE BEGIN PFP */
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
 
 /**
   * @brief  The application entry point.
@@ -83,74 +51,40 @@ void Task3(void const *argument);
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
-  xUARTQueue = xQueueCreate(1,1);
-  xADCQueue = xQueueCreate(1,2);
-  xLEDQueue = xQueueCreate(1,1);
+  xUARTQueue = xQueueCreate(1,1);   // create UART message Queue
+  xADCQueue = xQueueCreate(1,2);    // create ADC Queue
+  xLEDQueue = xQueueCreate(1,1);    // create LED state queue
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
 
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_ADC1_Init();
   MX_USART2_UART_Init();
-  /* USER CODE BEGIN 2 */
 
-  /* USER CODE END 2 */
-
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  xTaskCreate((TaskFunction_t)Task1,"LED Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);
-  xTaskCreate((TaskFunction_t)Task2,"UART Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);
-  xTaskCreate((TaskFunction_t)Task3,"ADC Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
+  xTaskCreate((TaskFunction_t)TaskLED,"LED Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);  //create TASK LED
+  xTaskCreate((TaskFunction_t)TaskUART,"UART Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);  //create TASK UART
+  xTaskCreate((TaskFunction_t)TaskADC,"ADC Controller", configMINIMAL_STACK_SIZE,NULL,1,NULL);    //create TASK ADC
+
 
   /* Start scheduler */
   osKernelStart();
 
-  /* We should never get here as control is now taken by the scheduler */
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
   }
-  /* USER CODE END 3 */
+
 }
 
 /**
@@ -200,15 +134,9 @@ void SystemClock_Config(void)
 static void MX_ADC1_Init(void)
 {
 
-  /* USER CODE BEGIN ADC1_Init 0 */
-
-  /* USER CODE END ADC1_Init 0 */
-
   ADC_ChannelConfTypeDef sConfig = {0};
 
-  /* USER CODE BEGIN ADC1_Init 1 */
 
-  /* USER CODE END ADC1_Init 1 */
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
@@ -236,9 +164,7 @@ static void MX_ADC1_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN ADC1_Init 2 */
 
-  /* USER CODE END ADC1_Init 2 */
 
 }
 
@@ -250,13 +176,7 @@ static void MX_ADC1_Init(void)
 static void MX_USART2_UART_Init(void)
 {
 
-  /* USER CODE BEGIN USART2_Init 0 */
 
-  /* USER CODE END USART2_Init 0 */
-
-  /* USER CODE BEGIN USART2_Init 1 */
-
-  /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
   huart2.Init.BaudRate = 115200;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
@@ -269,9 +189,7 @@ static void MX_USART2_UART_Init(void)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN USART2_Init 2 */
 
-  /* USER CODE END USART2_Init 2 */
 
 }
 
@@ -285,216 +203,229 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOF, GPIO_PIN_7|GPIO_PIN_9, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : PF7 PF9 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_9;
+  /*Configure GPIO pins : PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 
-/* USER CODE BEGIN 4 */
 
-/* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void Task1(void const * argument)
+void TaskLED(void const * argument)
 {
-  uint8_t modo,retorno;
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
+  uint8_t LED_mode;  //store the led mode from UART
+  uint8_t ack;       // acknowledge of the led's state
 
 
   while(1)
   {
-       if(xQueueReceive(xUARTQueue,&modo,0)==pdPASS)
+       if(xQueueReceive(xUARTQueue,&LED_mode,0)==pdPASS)
        {
-        	if(modo == 1)
-                {
-              	      HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9, GPIO_PIN_SET);
-              	      retorno=1;
-              	      xQueueSend(xLEDQueue,&retorno,0);
+        switch(LED_mode)
+         {
 
-                }
-                if(modo == 2)
-                {
-                        HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9, GPIO_PIN_RESET);
-                        retorno=2;
-                        xQueueSend(xLEDQueue,&retorno,0);
+	    case 1:
+        	      HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5, GPIO_PIN_SET);  //turn the led on
+              	      ack=1;
+              	      xQueueSend(xLEDQueue,&ack,0);             //send ack to uart task
+              	      break;
 
-                 }
-                 if(modo == 3)
-                 {
-                        HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_9);
-                        retorno=3;
-                        xQueueSend(xLEDQueue,&retorno,0);
+            case 2:
+                      HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5, GPIO_PIN_RESET);   // turn the led off
+                      ack=2;
+                      xQueueSend(xLEDQueue,&ack,0);  //send ack to UART task
+                      break;
 
-                 }
+            case 3:
+                     ack=3;
+                     xQueueSend(xLEDQueue,&ack,0);
+                     while(LED_mode==3)
+                     {
+                	 HAL_GPIO_TogglePin(GPIOA,GPIO_PIN_5);  // toggle led 500ms
+                	 osDelay(500);
+                	 if((xQueueReceive(xUARTQueue,&LED_mode,0)==pdPASS) && LED_mode ==3)  // receive a new led_mode
+                	   {
+                	     xQueueSend(xLEDQueue,&ack,pdMS_TO_TICKS(1));  //send ack to uart task
+                	   }
+                     }
+                     if(LED_mode==1)    // check new led mode
+                     {
+                	 ack=1;
+
+
+                	     HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5, GPIO_PIN_SET);  //turn the led on
+                	     xQueueSend(xLEDQueue,&ack,pdMS_TO_TICKS(1));   //send ack to uart task
+
+                     }
+                     if(LED_mode==2)   //check new led mode
+                     {
+                	 ack=2;
+
+                	     HAL_GPIO_WritePin(GPIOA,GPIO_PIN_5, GPIO_PIN_RESET);  // turn the led off
+                	     xQueueSend(xLEDQueue,&ack,pdMS_TO_TICKS(1));   //send ack to uart task
+
+                     }
+                 break;
+            }
        }
-
   }
 }
 
-void Task2(void const *argument)
+void TaskUART(void const *argument)
 {
-//uint16_t adc;
-//char msg[15];
-uint8_t answer=0;
+
+uint8_t ack_received=0;    //store an acknowledge received
+
   while(1)
     {
+      HAL_UART_Receive_IT(&huart2,(uint8_t*)Rx_data,1);   // Interrupt from UART RX
 
-      HAL_UART_Receive_IT(&huart2,(uint8_t*)Rx_data,1);
-
-      if(xQueueReceive(xLEDQueue,&answer,0)==pdPASS)
+      if(xQueueReceive(xLEDQueue,&ack_received,0)==pdPASS)  // check ack received from UART task
       {
-      	switch(answer)
+      	switch(ack_received)
       	{
       	  case 1:
       	      HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-      	      HAL_UART_Transmit(&huart2,(uint8_t *)"LED ACESO",9,100);
+      	      HAL_UART_Transmit(&huart2,(uint8_t *)"THE LED TURNED ON",17,100);  //tx message
       	      HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
       	      break;
 
 
       	  case 2:
 
-      		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-      		    HAL_UART_Transmit(&huart2,(uint8_t *)"LED APAGADO",11,100);
-      		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-      		    break;
+      	       HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      	       HAL_UART_Transmit(&huart2,(uint8_t *)"THE LED TURNED OFF",18,100); //tx message
+      	       HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      	       break;
 
       	  case 3:
 
-      		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-      		    HAL_UART_Transmit(&huart2,(uint8_t *)"LED TogglE",10,100);
-      		    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-      		    break;
+      		HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      		HAL_UART_Transmit(&huart2,(uint8_t *)"LED TOGGLE",17,100); //tx message
+      		HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      		break;
 
       	  default:
-      		       HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-      		       HAL_UART_Transmit(&huart2,(uint8_t *)"FALHA",5,100);
-      		       sprintf(msg,"rawValue: %hu\r\n",answer);
-      		       HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),100);
-      		       HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-         }
-
-	}
+      		HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+      		HAL_UART_Transmit(&huart2,(uint8_t *)"MSG FAIL",8,100);   //tx message
+      		HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+           }
+	 }
       }
-      //if(opt==1)
-	//{
-	//  xQueueSend(xUARTQueue,&opt,pdMS_TO_TICKS(10));
-	//}
-      //else
-	//xQueueSend(xUARTQueue,&opt,pdMS_TO_TICKS(10));
 }
-void Task3(void const *argument)
+void TaskADC(void const *argument)
 {
-uint16_t adcvalue=0;
-  while(1)
-    {
-      HAL_ADC_Start(&hadc1);
-      adcvalue = HAL_ADC_GetValue(&hadc1);
+uint16_t adc_msg = 0;
 
-      xQueueSend(xADCQueue,&adcvalue,0);
-    }
+  while(1)
+  {
+      HAL_ADC_Start(&hadc1);   //start adc read
+      adc_msg = HAL_ADC_GetValue(&hadc1);  // get adc value continuous
+
+      xQueueSend(xADCQueue,&adc_msg,0);   // send adc value to UART task
+   }
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 /* Set transmission flag: transfer complete*/
-uint8_t i, opt=0;
-uint16_t adc =0;
-//char msg[15];
 
-//BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-//BaseType_t xTaskWokenByReceive = pdFALSE;
+uint16_t adc_value=0;  //store adc value
+uint8_t led_option;   //store led option
 
-xQueueReceiveFromISR(xADCQueue,(uint16_t *)&adc,NULL);
 
+
+xQueueReceiveFromISR(xADCQueue,(uint16_t *)&adc_value,NULL);   //receive the adc value from ADC task
 
 if(huart->Instance==USART2)
   {
 
-    if(Rx_indx == 0)
-      {
-	for(i=0;i<100;i++)
-	  Rx_Buffer[i]=0;
-	//HAL_GPIO_WritePin(GPIOF,GPIO_PIN_9, GPIO_PIN_RESET);
-	//HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	//HAL_UART_Transmit(&huart2,(uint8_t *)"Digite o Comando: ",18,100);
+    if(Rx_index == 0)
+    {
+            for(uint8_t position=0;position<100;position++)
 
-      }
-    if(Rx_data[0]!='\r')
-      {
-	Rx_Buffer[Rx_indx++]=Rx_data[0];
-	HAL_UART_Receive_IT(&huart2,(uint8_t *)Rx_data,1);
-	HAL_UART_Transmit(&huart2,Rx_data,strlen((const char *)Rx_data),100);
-      }
-    else
-      {
-	Rx_indx=0;
-	Transfer_cplt=1;
+                Rx_Buffer[position]=0;    // clean UART rx buffer
+    }
+    if(Rx_data[0]!='\r')  // any key typed
+    {
+	Rx_Buffer[Rx_index++]=Rx_data[0];  // move to buffer the typed character
+	HAL_UART_Receive_IT(&huart2,(uint8_t *)Rx_data,1);     //get character
+	HAL_UART_Transmit(&huart2,Rx_data,strlen((const char *)Rx_data),100);  //echo the character
+    }
+    else    //enter key pressed
+    {
+
+	Rx_index = 0;  // restart buffer index
+	Transfer_complete = TRUE;
 	HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	//HAL_UART_Transmit(&huart2,(uint8_t *)"Digite o Comando: ",18,100);
-	//HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	//HAL_UART_Transmit(&huart2,Rx_Buffer,strlen((char *)Rx_Buffer),100);
 
-	if(!strcmp((char *)Rx_Buffer,"LED ON"))
+
+	if(!strcmp((char *)Rx_Buffer,"led on"))
 	{
-	  opt = 1;
+	  led_option = 1;
 
-	  xQueueSendFromISR(xUARTQueue,&opt,NULL);
+	  xQueueSendFromISR(xUARTQueue,&led_option,NULL);   //send user message to LED task
 
 	}
-	if(!strcmp((char *)Rx_Buffer,"LED OFF"))
+
+        if(!strcmp((char *)Rx_Buffer,"led off"))
 	{
 
-	   opt = 2;
-	   xQueueSendFromISR(xUARTQueue,&opt,NULL);
-
-	}
-	if(!strcmp((char *)Rx_Buffer,"LED T"))
-	{
-	    opt = 3;
-	    xQueueSendFromISR(xUARTQueue,&opt,NULL);
+	   led_option = 2;
+	   xQueueSendFromISR(xUARTQueue,&led_option,NULL);    //send user message to LED task
 
 	}
-	if(!strcmp((char *)Rx_Buffer,"Loop Back"))
+
+        if(!strcmp((char *)Rx_Buffer,"led tgl"))
 	{
-	    opt = 4;
+	    led_option = 3;
+	    xQueueSendFromISR(xUARTQueue,&led_option,NULL);    //send user message to LED task
+
+	}
+
+        if(!strcmp((char *)Rx_Buffer,"lb on"))
+	{
+	      lp_mode = TRUE;                                    // turn the loop back mode on
+	      HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+	      HAL_UART_Transmit(&huart2,(uint8_t *)"Loop Back is ON",15,100);
+	      HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+	}
+
+        if(!strcmp((char *)Rx_Buffer,"lb off"))
+       	{
+       	      lp_mode = FALSE;                                       // turn the loop back mode off
+       	      HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+       	      HAL_UART_Transmit(&huart2,(uint8_t *)"Loop Back is OFF",16,100);
+       	      HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+       	}
+
+        if(!strcmp((char *)Rx_Buffer,"adc"))
+	{
+	    sprintf(string_msg,"ADC - Current Value: %hu\r\n",adc_value);   //integer data to string
+
 	    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-	    HAL_UART_Transmit(&huart2,Rx_Buffer,strlen((char *)Rx_Buffer),100);
+	    HAL_UART_Transmit(&huart2,(uint8_t *)string_msg,strlen(string_msg),100); //transmit adc read
 	    HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
 	}
-	if(!strcmp((char *)Rx_Buffer,"ADC"))
-	{
+        if(lp_mode == TRUE)     // if loop back mode is on
+        {
 
+            HAL_UART_Transmit(&huart2,(uint8_t *)"Last data packet sent: ",23,100);
+	    HAL_UART_Transmit(&huart2,Rx_Buffer,strlen((char *)Rx_Buffer),100);   //transmit the last packet sent by user
+            HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
 
-			sprintf(msg,"rawValue: %hu\r\n",adc);
-			HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
-			HAL_UART_Transmit(&huart2,(uint8_t *)msg,strlen(msg),100);
-			HAL_UART_Transmit(&huart2,(uint8_t *)"\n\r",2,100);
+        }
+     }
 
-
-	}
-
-      }
-    //HAL_UART_Receive_IT(&huart2,(uint8_t *)Rx_data,1);
-    //HAL_UART_Transmit(&huart2,Rx_data,strlen((const char *)Rx_data),100);
   }
+
 }
 
 
@@ -531,4 +462,3 @@ void assert_failed(uint8_t *file, uint32_t line)
 }
 #endif /* USE_FULL_ASSERT */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
