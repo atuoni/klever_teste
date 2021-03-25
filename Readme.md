@@ -13,7 +13,7 @@
 
 -O sistema opera através da USART2 @ 115200,N,8,1 nos pinos PA2 e PA3
 
--Foi Entrada analógica no pino PA0
+-Foi utilizada a Entrada analógica no pino PA0
 
 -Foi utilizado LED no pino PA5
 
