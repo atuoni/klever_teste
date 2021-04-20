@@ -9,7 +9,6 @@
 -Foi utilizado o MCU STM32 modelo STM32F407ZGT6 para os testes. 
 -Foi utilizado o STM32CubeMX para auxiliar na configuração e inicialização dos periféricos da CPU.
 
--Acredito que consiga portar o código para o STM32F401RE sem dificuldades.
 
 -O sistema opera através da USART2 @ 115200,N,8,1 nos pinos PA2 e PA3
 
